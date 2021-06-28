@@ -6,7 +6,7 @@ from log_utils import *
 
 class NmeaRecorderAbstract:
 
-    DEFAULT_CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=10),
+    DEFAULT_CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=30),
                                  'log_level': logging.DEBUG,
                                  'log_original': True},
                       }
