@@ -102,12 +102,14 @@ class LoggingEventRecorder(NmeaRecorderAbstract):
         log_str = f'{msg.gps_utc}, {latitude[0]} {latitude[1].name[0]}, {longitude[0]} {longitude[1].name[0]}, ' \
             f'{msg.altitude:.04f}, {msg.sats_used}'
 
-        config = self._config.get('$GPGGA', self.DUMMY_CONFIG)
+        config = self._config.get('$GPGGA', None)
 
-        self._logger.log(config['log_level'], log_str)
+        if config is not None:
 
-        if config['log_original']:
-            self._logger.log(config['log_level'], msg.msg)
+            self._logger.log(config['log_level'], log_str)
+
+            if config['log_original']:
+                self._logger.log(config['log_level'], msg.msg)
 
 
 class CsvPositionRecorder(NmeaRecorderAbstract):
@@ -140,7 +142,7 @@ class CsvPositionRecorder(NmeaRecorderAbstract):
             if i < len(self.FIELD_NAMES)-1:
                 header_line += ','
 
-        self._fp.writelines([header_line, ])
+        self._fp.write(header_line+'\n')
         self._fp.flush()
 
     def record_nmea_message(self, nmea_msg: NmeaMessage):
@@ -170,7 +172,7 @@ class CsvPositionRecorder(NmeaRecorderAbstract):
         csv_str = f'{now}, {msg.gps_utc}, ' \
             f'{latitude[0]}, {latitude[1].name[0]}, ' \
             f'{longitude[0]}, {longitude[1].name[0]}, ' \
-            f'{msg.altitude:.04f}, {msg.sats_used}'
+            f'{msg.altitude:.04f}, {msg.sats_used}\n'
 
-        self._fp.writelines([csv_str, ])
+        self._fp.write(csv_str)
         self._fp.flush()

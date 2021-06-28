@@ -10,10 +10,10 @@ CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=30),
                      'log_original': False},
           }
 
-LOG_LOCATION='logs'
+LOG_LOCATION = 'logs'
 
 
-def gps_main(sleep_time_s=0.2, print_all_to_screen=True):
+def gps_main(sleep_time_s=0.1, print_all_to_screen=True):
 
     log = LoggingEventRecorder(config=CONFIG, log_location=LOG_LOCATION)
     csv = CsvPositionRecorder(config=CONFIG, location=LOG_LOCATION)

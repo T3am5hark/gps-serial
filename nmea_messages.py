@@ -76,7 +76,7 @@ class NmeaGpgga(NmeaMessage):
             self._lat_long = LatLong.from_nmea(fields[2], fields[3],
                                                fields[4], fields[5])
 
-            self._altitude = float(fields[8])
+            self._altitude = float(fields[9])
 
         else:
             self._lat_long = None
@@ -100,7 +100,7 @@ class NmeaGpgga(NmeaMessage):
 
     @property
     def position_fix_code(self):
-        return self.fields[6]
+        return int(self.fields[6])
 
     @property
     def valid_position_fix(self):
