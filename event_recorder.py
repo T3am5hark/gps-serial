@@ -1,44 +1,26 @@
 from abc import abstractmethod
 from datetime import datetime, timedelta
-from gps import parse_msg, LatLong, utc_to_datetime
+from nmea_messages import NmeaMessage, NmeaGpgga
+
 from log_utils import *
 
+DEFAULT_CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=30),
+                             'log_level': logging.DEBUG,
+                             'log_original': True},
+                  }
 
-class NmeaRecorderAbstract:
+DUMMY_CONFIG = {'frequency': timedelta(seconds=600),
+                'log_level': logging.DEBUG,
+                'log_original': True}
 
-    DEFAULT_CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=30),
-                                 'log_level': logging.DEBUG,
-                                 'log_original': True},
-                      }
 
-    DUMMY_CONFIG = {'frequency': timedelta(seconds=600),
-                    'log_level': logging.DEBUG,
-                    'log_original': True}
+class EventTimer:
 
     def __init__(self, config=DEFAULT_CONFIG):
         self._config = config
-
-    @abstractmethod
-    def record_nmea_message(self, msg, fields=None):
-        pass
-
-
-class SimpleEventRecorder(NmeaRecorderAbstract):
-
-    def __init__(self, config=NmeaRecorderAbstract.DEFAULT_CONFIG,
-                 logger=None, log_to_file=True):
-        super(SimpleEventRecorder, self).__init__(config)
-
-        if logger is None:
-            logger = init_logging_screen()
-            if log_to_file:
-                logger = init_logging_file()
-
-        self._logger = logger
-
         self._msg_timestamps = dict()
 
-    def _should_update(self, nmea_sentence_label:str):
+    def should_update(self, nmea_sentence_label: str):
 
         # Not configured to record this sentence type
         if nmea_sentence_label not in self._config.keys():
@@ -50,56 +32,145 @@ class SimpleEventRecorder(NmeaRecorderAbstract):
 
         # Enough time has lapsed since last recording, grab this one
         last_timestamp = self._msg_timestamps.get(nmea_sentence_label, datetime.now)
-        freq = self._config.get(nmea_sentence_label, self.DUMMY_CONFIG)['frequency']
+        freq = self._config.get(nmea_sentence_label, DUMMY_CONFIG)['frequency']
         if datetime.now() - last_timestamp > freq:
             return True
 
         return False
 
+    def update(self, nmea_sentence_label: str):
+        # Track most recent update
+        self._msg_timestamps[nmea_sentence_label] = datetime.now()
+
+
+class NmeaRecorderAbstract:
+
+    def __init__(self, config=DEFAULT_CONFIG,
+                 timer: EventTimer = None):
+        self._config = config
+        if timer is None:
+            timer = EventTimer(config)
+
+        self._timer = timer
+
+    @abstractmethod
     def record_nmea_message(self, msg, fields=None):
+        pass
 
-        if fields is None:
-            _, fields = parse_msg(msg)
 
-        if self._should_update(fields[0]):
+class LoggingEventRecorder(NmeaRecorderAbstract):
 
-            # Track most recent update
-            self._msg_timestamps[fields[0]] = datetime.now()
+    def __init__(self, config=DEFAULT_CONFIG,
+                 timer: EventTimer = None,
+                 logger=None, log_to_file=True,
+                 log_location:str = '.'):
+        super().__init__(config, timer)
 
-            if fields[0] == '$GPGGA':
+        if logger is None:
+            logger = init_logging_screen()
+            if log_to_file:
+                logger = init_logging_file(location=log_location)
+
+        self._logger = logger
+
+    def record_nmea_message(self, nmea_msg: NmeaMessage):
+
+        message_type = nmea_msg.message_type
+        if self._timer.should_update(message_type):
+
+            self._timer.update(message_type)
+
+            if message_type == '$GPGGA':
                 try:
-                    self._log_gpgga(msg, fields)
+                    self._log_gpgga(nmea_msg)
                 except Exception as ex:
                     self._logger.exception(str(ex))
 
             else:
                 pass
 
-    def _log_gpgga(self, msg, fields):
+    def _log_gpgga(self, msg: NmeaGpgga):
 
-        # Position Fix Indicator - check for valid GPS fix types
-        if int(fields[6]) not in [1, 2, 6]:
+        if not msg.valid_position_fix:
             return
 
-        # UTC from gps sentence
-        gps_utc = str(utc_to_datetime(fields[1]))
-
-        lat_long = LatLong.from_nmea(fields[2], fields[3],
-                                     fields[4], fields[5])
+        lat_long = msg.lat_long
 
         latitude = lat_long.latitude
         longitude = lat_long.longitude
 
-        sats_used = int(fields[7])
-
-        altitude = float(fields[8])
-
-        log_str = f'{gps_utc}, {latitude[0]} {latitude[1].name[0]}, {longitude[0]} {longitude[1].name[0]}, ' \
-            f'{altitude:.04f}, {sats_used}'
+        log_str = f'{msg.gps_utc}, {latitude[0]} {latitude[1].name[0]}, {longitude[0]} {longitude[1].name[0]}, ' \
+            f'{msg.altitude:.04f}, {msg.sats_used}'
 
         config = self._config.get('$GPGGA', self.DUMMY_CONFIG)
 
         self._logger.log(config['log_level'], log_str)
 
         if config['log_original']:
-            self._logger.log(config['log_level'], msg)
+            self._logger.log(config['log_level'], msg.msg)
+
+
+class CsvPositionRecorder(NmeaRecorderAbstract):
+    FIELD_NAMES = ['timestamp', 'UTC_TimeStamp',
+                   'latitude', 'northsouth',
+                   'longitude', 'eastwest',
+                   'altitude', 'satellites_used',
+                   ]
+
+    def __init__(self, config=DEFAULT_CONFIG,
+                 timer: EventTimer = None,
+                 fname: str = None,
+                 location: str = '.'):
+        super().__init__(config, timer)
+
+        if fname is None:
+            fname = 'gps_events.{}.csv'.format(timestamp())
+
+        fname = location + '/' + fname
+
+        self._fp = open(fname, 'w')
+
+        self._write_column_headers()
+
+    def _write_column_headers(self):
+
+        header_line = ''
+        for i, field in enumerate(self.FIELD_NAMES):
+            header_line += field
+            if i < len(self.FIELD_NAMES)-1:
+                header_line += ','
+
+        self._fp.writelines([header_line, ])
+        self._fp.flush()
+
+    def record_nmea_message(self, nmea_msg: NmeaMessage):
+
+        message_type = nmea_msg.message_type
+        if self._timer.should_update(message_type):
+
+            self._timer.update(message_type)
+
+            if message_type == '$GPGGA':
+                self._write_gpgga(nmea_msg)
+            else:
+                pass
+
+    def _write_gpgga(self, msg: NmeaGpgga):
+
+        if not msg.valid_position_fix:
+            return
+
+        now = datetime.now()
+
+        lat_long = msg.lat_long
+
+        latitude = lat_long.latitude
+        longitude = lat_long.longitude
+
+        csv_str = f'{now}, {msg.gps_utc}, ' \
+            f'{latitude[0]}, {latitude[1].name[0]}, ' \
+            f'{longitude[0]}, {longitude[1].name[0]}, ' \
+            f'{msg.altitude:.04f}, {msg.sats_used}'
+
+        self._fp.writelines([csv_str, ])
+        self._fp.flush()

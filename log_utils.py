@@ -3,9 +3,10 @@ from sys import stderr
 from datetime import datetime
 
 DEFAULT_LOGGER_NAME = 'gps_logger'
+DEFAULT_LOCATION = 'logs'
 
 
-def timestamp(fmt='%Y-%m-%d %H:%M:%S', dtime=None):
+def timestamp(fmt='%Y-%m-%d_%H:%M:%S', dtime=None):
     if dtime is None:
         dtime = datetime.now()
 
@@ -40,17 +41,20 @@ def init_logging_file(logger=None,
                       log_level=logging.DEBUG,
                       formatter=None,
                       filename: str = None,
+                      location: str = '.',
                       **kwargs):
 
     if logger is None:
         logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
     if filename is None:
-        filename = DEFAULT_LOGGER_NAME + '.{}.log'.format(filename_timestamp())
+        filename = DEFAULT_LOGGER_NAME + '.{}.log'.format(timestamp())
+
+    filename = location + '/' + filename
 
     # create formatter
     if formatter is None:
-        formatter = logging.Formatter('[%(asctime)s][%(name)s][%(levelname)s] %(message)s')
+        formatter = logging.Formatter('[%(asctime)s],[%(name)s],[%(levelname)s],%(message)s')
 
     fh = logging.FileHandler(filename, **kwargs)
     fh.setLevel(log_level)

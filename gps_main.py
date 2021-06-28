@@ -1,24 +1,42 @@
-from event_recorder import SimpleEventRecorder
+from event_recorder import LoggingEventRecorder, CsvPositionRecorder
 from gps import GpsReceiver
+from nmea_messages import NmeaMessage
 from time import sleep
+from datetime import timedelta
+import logging
+
+CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=30),
+                     'log_level': logging.DEBUG,
+                     'log_original': False},
+          }
+
+LOG_LOCATION='logs'
 
 
 def gps_main(sleep_time_s=0.2, print_all_to_screen=True):
 
-    rec = SimpleEventRecorder()
+    log = LoggingEventRecorder(config=CONFIG, log_location=LOG_LOCATION)
+    csv = CsvPositionRecorder(config=CONFIG, location=LOG_LOCATION)
+
+    recorders = [log, csv]
+
     gps = GpsReceiver()
 
-    logger = rec._logger
+    logger = log._logger
 
     logger.info(f'Starting loop with {sleep_time_s:.04}s wait')
 
     while True:
 
-        msg, fields = gps.next_message()
-        if print_all_to_screen:
-            print(msg)
+        bytes = gps.next_message()
 
-        rec.record_nmea_message(msg, fields)
+        if print_all_to_screen:
+            print(str(bytes))
+
+        nmea = NmeaMessage.bytes_to_nmea_message(bytes)
+
+        for rec in recorders:
+            rec.record_nmea_message(nmea)
 
         sleep(sleep_time_s)
 
