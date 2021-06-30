@@ -3,7 +3,7 @@ from serial import Serial
 
 class GpsReceiver:
 
-    DEFAULT_BAUD = 2000000
+    DEFAULT_BAUD = 9600
     DEFAULT_DEVICE = '/dev/ttyACM0'
     DEFAULT_RECORDED_SENTENCES = ['$GPGGA',]
 

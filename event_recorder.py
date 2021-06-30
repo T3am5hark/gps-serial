@@ -4,7 +4,7 @@ from nmea_messages import NmeaMessage, NmeaGpgga
 
 from log_utils import *
 
-DEFAULT_CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=30),
+DEFAULT_CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=10),
                              'log_level': logging.DEBUG,
                              'log_original': True},
                   }

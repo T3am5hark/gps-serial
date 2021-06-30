@@ -5,7 +5,7 @@ from time import sleep
 from datetime import timedelta
 import logging
 
-CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=30),
+CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=10),
                      'log_level': logging.DEBUG,
                      'log_original': False},
           }
