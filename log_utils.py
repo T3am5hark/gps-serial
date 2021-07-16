@@ -1,12 +1,12 @@
 import logging
-from sys import stderr
+from sys import stderr, stdout
 from datetime import datetime
 
 DEFAULT_LOGGER_NAME = 'gps_logger'
 DEFAULT_LOCATION = 'logs'
 
 
-def timestamp(fmt='%Y-%m-%d_%H:%M:%S', dtime=None):
+def timestamp(fmt='%Y-%m-%d.%H:%M:%S', dtime=None):
     if dtime is None:
         dtime = datetime.now()
 
@@ -18,7 +18,7 @@ def filename_timestamp(dtime=None):
 
 
 def init_logging_screen(logger=None, log_level=logging.DEBUG,
-                        formatter=None, stream=stderr):
+                        formatter=None, stream=stdout):
     if logger is None:
         logger = logging.getLogger(DEFAULT_LOGGER_NAME)
     # logging

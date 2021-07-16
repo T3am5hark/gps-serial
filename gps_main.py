@@ -10,7 +10,7 @@ CONFIG = {'$GPGGA': {'frequency': timedelta(seconds=10),
                      'log_original': False},
           }
 
-LOG_LOCATION = 'logs'
+LOG_LOCATION = '/home/pi/jdm/gps-serial/logs'
 
 
 def gps_main(sleep_time_s=0.1, print_all_to_screen=True):
@@ -18,7 +18,8 @@ def gps_main(sleep_time_s=0.1, print_all_to_screen=True):
     log = LoggingEventRecorder(config=CONFIG, log_location=LOG_LOCATION)
     csv = CsvPositionRecorder(config=CONFIG, location=LOG_LOCATION)
 
-    recorders = [log, csv]
+    # recorders = [log, csv]
+    recorders = [csv, ]
 
     gps = GpsReceiver()
 
