@@ -67,8 +67,15 @@ class NmeaGpgga(NmeaMessage):
         super().__init__(msg, fields)
 
         fields = self.fields
-        self._gps_utc = NmeaMessage.utc_to_datetime(fields[1])
-        self._sats_used = int(fields[7])
+
+        try:
+            self._gps_utc = NmeaMessage.utc_to_datetime(fields[1])
+            self._sats_used = int(fields[7])
+        except Exception as ex:
+            # If the gps receiver isn't seeing any satellites, it may return blank
+            # timestamps.
+            self._gps_utc = datetime.now().astimezone(pytz.utc)
+            self._sats_used = 0
 
         if self.valid_position_fix:
 
