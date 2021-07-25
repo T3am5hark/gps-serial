@@ -1,2 +1,4 @@
-ps -ef | grep -i gps | grep -v grep
+#!/bin/bash
 
+# ps -ef | grep -i gps | grep -v grep
+pgrep -alf gps_main.py

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo "checking for running process..."
+PID=$(pgrep -f gps_main.py)
+
+if [[ $PID ]]; then
+    echo "found running process $PID"
+    kill -9 $PID
+else
+    echo "gps collection not running"
+fi
+
+echo $PID
+
+
+
